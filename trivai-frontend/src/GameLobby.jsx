@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import Scoreboard from './components/Scoreboard';
 import PromptInput from './components/PromptInput';
+import QuestionDisplay from './components/QuestionDisplay';
 
 const GameLobby = () => {
+  const { gameId } = useParams();
   const location = useLocation();
-  const username = location.state?.user || 'Guest';
+  const { username } = location.state;
 
   const [players, setPlayers] = useState([]);
   const [gameStarted, setGameStarted] = useState(false);
@@ -16,18 +18,30 @@ const GameLobby = () => {
   const ws = useRef(null);
 
   useEffect(() => {
-    const fetchPlayers = async () => {
+    const fetchPlayers = async (lobbyId) => {
       try {
-        const response = await fetch('http://localhost:5000/players');
+        const response = await fetch(`http://localhost:5000/players/getplayers?lobbyId=${lobbyId}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+    
+        if (!response.ok) {
+          throw new Error(`Failed to join lobby: ${response.statusText}`);
+        }
+    
         const data = await response.json();
-        setPlayers(data.players);
+        setPlayers(data.players); // Ensure players get updated
       } catch (error) {
-        console.error('Error fetching players:', error);
+        console.error(error);
       }
     };
 
-    fetchPlayers();
-  }, []);
+    if (gameId) {
+      fetchPlayers(gameId);
+    }
+  }, [gameId]);
 
   useEffect(() => {
     ws.current = new WebSocket('ws://localhost:5000');
@@ -67,12 +81,12 @@ const GameLobby = () => {
 
   const handlePromptSubmit = async (prompt) => {
     try {
-      const response = await fetch('http://localhost:5000/openai', {
+      const response = await fetch('http://localhost:5000/game/openai', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, lobbyId: gameId }),
       });
 
       if (response.ok) {
@@ -93,7 +107,7 @@ const GameLobby = () => {
     e.preventDefault();
     if (currentQuestion && playerAnswer.trim().toLowerCase() === currentQuestion.answer.toLowerCase()) {
       setFeedback('Correct!');
-      ws.current?.send(JSON.stringify({ type: 'updateScore', username, score: 1 }));
+      ws.current?.send(JSON.stringify({ type: 'updateScore', username, score: 1, lobbyId: gameId }));
     } else {
       setFeedback('Incorrect. Try again!');
     }
@@ -106,23 +120,14 @@ const GameLobby = () => {
         {!gameStarted ? (
           <PromptInput onPromptSubmit={handlePromptSubmit} />
         ) : (
-          <div className="text-center">
-            <h4>{currentQuestion?.question}</h4>
-            <h5>Time Remaining: {timeLeft} seconds</h5>
-            <form onSubmit={handleAnswerSubmit} className="mt-3">
-              <input
-                type="text"
-                className="form-control mb-2"
-                value={playerAnswer}
-                onChange={(e) => setPlayerAnswer(e.target.value)}
-                placeholder="Type your answer here..."
-              />
-              <button type="submit" className="btn btn-primary">
-                Submit
-              </button>
-            </form>
-            {feedback && <p className="mt-2">{feedback}</p>}
-          </div>
+          <QuestionDisplay
+            currentQuestion={currentQuestion}
+            timeLeft={timeLeft}
+            playerAnswer={playerAnswer}
+            setPlayerAnswer={setPlayerAnswer}
+            handleAnswerSubmit={handleAnswerSubmit}
+            feedback={feedback}
+          />
         )}
       </div>
     </div>

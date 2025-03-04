@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
-
 const ChooseUsername = ({ onUsernameSubmit }) => {
   const [username, setUsername] = useState('');
 
