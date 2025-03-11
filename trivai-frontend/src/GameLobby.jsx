@@ -18,51 +18,50 @@ const GameLobby = () => {
   const ws = useRef(null);
 
   useEffect(() => {
-    const fetchPlayers = async (lobbyId) => {
-      try {
-        const response = await fetch(`http://localhost:5000/players/getplayers?lobbyId=${lobbyId}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-    
-        if (!response.ok) {
-          throw new Error(`Failed to join lobby: ${response.statusText}`);
-        }
-    
-        const data = await response.json();
-        setPlayers(data.players); // Ensure players get updated
-      } catch (error) {
-        console.error(error);
-      }
-    };
-
-    if (gameId) {
-      fetchPlayers(gameId);
-    }
-  }, [gameId]);
-
-  useEffect(() => {
     ws.current = new WebSocket('ws://localhost:5000');
 
     ws.current.onopen = () => {
       console.log('WebSocket connection established');
+      ws.current.send(JSON.stringify({
+        type: 'joinLobby',
+        lobbyId: gameId,
+        username: username
+      }));
     };
 
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
       console.log('WebSocket message received:', data);
-      if (data.type === 'gameStarted') {
-        setGameStarted(true);
-        console.log('Game started for everyone');
-      } else if (data.type === 'gameState') {
-        setCurrentQuestion(data.question);
-        setTimeLeft(data.timeLeft);
-        setPlayers(data.players);
-      } else if (data.type === 'gameOver') {
-        setGameStarted(false);
-        setFeedback('Game Over');
+    
+      switch (data.type) {
+        case 'gameStarted': {
+          setGameStarted(true);
+          console.log('Game started for everyone');
+          break;
+        }
+        
+        case 'gameState': {
+          setCurrentQuestion(data.question);
+          setTimeLeft(data.timeLeft);
+          setPlayers(data.players);
+          break;
+        }
+
+        case 'playersUpdate': {
+          setPlayers(data.players);
+          break;
+        }
+        
+        case 'gameOver': {
+          setGameStarted(false);
+          setFeedback('Game Over');
+          break;
+        }
+    
+        default: {
+          console.log(`Unhandled message type: ${data.type}`);
+          break;
+        }
       }
     };
 
@@ -77,7 +76,7 @@ const GameLobby = () => {
     return () => {
       ws.current?.close();
     };
-  }, []);
+  }, [gameId, username]);
 
   const handlePromptSubmit = async (prompt) => {
     try {

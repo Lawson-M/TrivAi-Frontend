@@ -23,46 +23,30 @@ const GameMenu = () => {
   };
 
   const handleGameIdSubmit = async ({ gameId, username }) => {
-    if (username === '' || gameId === '') {
-      return;
-    }
-    try {
-      const response = await fetch('http://localhost:5000/game/join-lobby', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ lobbyId: gameId, username }),
-      });
-
-      if (response.ok) {
-        navigate(`/lobby/${gameId}`, { state: { username } });
-      } else {
-        alert('Error joining lobby');
-      }
-    } catch (error) {
-      console.error('Error:', error);
+    if (username !== '' || gameId !== '') {
+      navigate(`/lobby/${gameId}`, { state: { username } });
     }
   };
 
   const handleHostSubmit = async (username) => {
-    try {
-      const response = await fetch('http://localhost:5000/game/create-lobby', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username }),
-      });
+    if (username !== '') {
+      try {
+        const response = await fetch('http://localhost:5000/game/create-lobby', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
 
-      if (response.ok) {
-        const { lobbyId } = await response.json();
-        navigate(`/lobby/${lobbyId}`, { state: { username } });
-      } else {
-        alert('Error creating lobby');
+        if (response.ok) {
+          const { lobbyId } = await response.json();
+          navigate(`/lobby/${lobbyId}`, { state: { username } });
+        } else {
+          alert('Error creating lobby');
+        }
+      } catch (error) {
+        console.error('Error:', error);
       }
-    } catch (error) {
-      console.error('Error:', error);
     }
   };
 
