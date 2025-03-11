@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import Scoreboard from './components/Scoreboard';
 import PromptInput from './components/PromptInput';
+import QuestionDisplay from './components/QuestionDisplay';
 
 const GameLobby = () => {
+  const { gameId } = useParams();
   const location = useLocation();
-  const username = location.state?.user || 'Guest';
+  const { username } = location.state;
 
   const [players, setPlayers] = useState([]);
   const [gameStarted, setGameStarted] = useState(false);
@@ -16,39 +18,50 @@ const GameLobby = () => {
   const ws = useRef(null);
 
   useEffect(() => {
-    const fetchPlayers = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/players');
-        const data = await response.json();
-        setPlayers(data.players);
-      } catch (error) {
-        console.error('Error fetching players:', error);
-      }
-    };
-
-    fetchPlayers();
-  }, []);
-
-  useEffect(() => {
     ws.current = new WebSocket('ws://localhost:5000');
 
     ws.current.onopen = () => {
       console.log('WebSocket connection established');
+      ws.current.send(JSON.stringify({
+        type: 'joinLobby',
+        lobbyId: gameId,
+        username: username
+      }));
     };
 
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
       console.log('WebSocket message received:', data);
-      if (data.type === 'gameStarted') {
-        setGameStarted(true);
-        console.log('Game started for everyone');
-      } else if (data.type === 'gameState') {
-        setCurrentQuestion(data.question);
-        setTimeLeft(data.timeLeft);
-        setPlayers(data.players);
-      } else if (data.type === 'gameOver') {
-        setGameStarted(false);
-        setFeedback('Game Over');
+    
+      switch (data.type) {
+        case 'gameStarted': {
+          setGameStarted(true);
+          console.log('Game started for everyone');
+          break;
+        }
+        
+        case 'gameState': {
+          setCurrentQuestion(data.question);
+          setTimeLeft(data.timeLeft);
+          setPlayers(data.players);
+          break;
+        }
+
+        case 'playersUpdate': {
+          setPlayers(data.players);
+          break;
+        }
+        
+        case 'gameOver': {
+          setGameStarted(false);
+          setFeedback('Game Over');
+          break;
+        }
+    
+        default: {
+          console.log(`Unhandled message type: ${data.type}`);
+          break;
+        }
       }
     };
 
@@ -63,16 +76,16 @@ const GameLobby = () => {
     return () => {
       ws.current?.close();
     };
-  }, []);
+  }, [gameId, username]);
 
   const handlePromptSubmit = async (prompt) => {
     try {
-      const response = await fetch('http://localhost:5000/openai', {
+      const response = await fetch('http://localhost:5000/game/openai', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, lobbyId: gameId }),
       });
 
       if (response.ok) {
@@ -93,7 +106,7 @@ const GameLobby = () => {
     e.preventDefault();
     if (currentQuestion && playerAnswer.trim().toLowerCase() === currentQuestion.answer.toLowerCase()) {
       setFeedback('Correct!');
-      ws.current?.send(JSON.stringify({ type: 'updateScore', username, score: 1 }));
+      ws.current?.send(JSON.stringify({ type: 'updateScore', username, score: 1, lobbyId: gameId }));
     } else {
       setFeedback('Incorrect. Try again!');
     }
@@ -106,23 +119,14 @@ const GameLobby = () => {
         {!gameStarted ? (
           <PromptInput onPromptSubmit={handlePromptSubmit} />
         ) : (
-          <div className="text-center">
-            <h4>{currentQuestion?.question}</h4>
-            <h5>Time Remaining: {timeLeft} seconds</h5>
-            <form onSubmit={handleAnswerSubmit} className="mt-3">
-              <input
-                type="text"
-                className="form-control mb-2"
-                value={playerAnswer}
-                onChange={(e) => setPlayerAnswer(e.target.value)}
-                placeholder="Type your answer here..."
-              />
-              <button type="submit" className="btn btn-primary">
-                Submit
-              </button>
-            </form>
-            {feedback && <p className="mt-2">{feedback}</p>}
-          </div>
+          <QuestionDisplay
+            currentQuestion={currentQuestion}
+            timeLeft={timeLeft}
+            playerAnswer={playerAnswer}
+            setPlayerAnswer={setPlayerAnswer}
+            handleAnswerSubmit={handleAnswerSubmit}
+            feedback={feedback}
+          />
         )}
       </div>
     </div>

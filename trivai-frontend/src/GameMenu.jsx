@@ -3,47 +3,50 @@ import { useNavigate } from 'react-router-dom';
 import JoinGameButton from './components/JoinGameButton';
 import HostGameButton from './components/HostGameButton';
 import ChooseUsername from './components/EnterUsername';
+import GameIdInput from './components/GameIdInput';
 import './App.css';
 
 const GameMenu = () => {
   const navigate = useNavigate();
 
-  const [isUsernameSet, setIsUsernameSet] = useState(false);
   const [isJoiningGame, setIsJoiningGame] = useState(false);
   const [isHostingGame, setIsHostingGame] = useState(false);
-  const [selectedName, setSelectedName] = useState('Guest');
 
   const handleJoinGame = () => {
     setIsJoiningGame(true);
     setIsHostingGame(false);
-    navigate('/lobby', { state: { user: selectedName } });
   };
 
   const handleHostGame = () => {
     setIsHostingGame(true);
     setIsJoiningGame(false);
-    navigate('/lobby', { state: { user: selectedName } });
   };
 
-  const handleUsernameSubmit = async (username) => {
-    try {
-      const response = await fetch('http://localhost:5000/save-username', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username }),
-      });
+  const handleGameIdSubmit = async ({ gameId, username }) => {
+    if (username !== '' || gameId !== '') {
+      navigate(`/lobby/${gameId}`, { state: { username } });
+    }
+  };
 
-      if (response.ok) {
-        setSelectedName(username);
-        setIsUsernameSet(true);
-        console.log('Username saved successfully');
-      } else {
-        alert('Error saving username');
+  const handleHostSubmit = async (username) => {
+    if (username !== '') {
+      try {
+        const response = await fetch('http://localhost:5000/game/create-lobby', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+
+        if (response.ok) {
+          const { lobbyId } = await response.json();
+          navigate(`/lobby/${lobbyId}`, { state: { username } });
+        } else {
+          alert('Error creating lobby');
+        }
+      } catch (error) {
+        console.error('Error:', error);
       }
-    } catch (error) {
-      console.error('Error:', error);
     }
   };
 
@@ -57,12 +60,18 @@ const GameMenu = () => {
       <div className="row flex-grow-1 d-flex justify-content-center align-items-center text-center">
         <div className="col-12 col-md-6">
           <div className="mb-3">
-            {!isUsernameSet ? (
-              <ChooseUsername onUsernameSubmit={handleUsernameSubmit} />
-            ) : (
+            {(!isJoiningGame && !isHostingGame) ? (
               <div>
                 <JoinGameButton onClick={handleJoinGame} />
                 <HostGameButton onClick={handleHostGame} />
+              </div>
+            ) : (isHostingGame) ? (
+              <div>
+                <ChooseUsername onUsernameSubmit={handleHostSubmit} />
+              </div>
+            ) : (
+              <div>
+                <GameIdInput onSubmit={handleGameIdSubmit} />
               </div>
             )}
           </div>

@@ -8,7 +8,7 @@ const App = () => {
     <Router>
       <Routes>
         <Route path="/" element={<GameMenu />} /> {/* Main Menu */}
-        <Route path="/lobby" element={<GameLobby />} /> {/* Lobby page */}
+        <Route path="/lobby/:gameId" element={<GameLobby />} /> {/* Lobby page */}
       </Routes>
     </Router>
   );
