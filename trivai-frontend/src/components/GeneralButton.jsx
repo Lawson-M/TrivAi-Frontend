@@ -1,11 +1,11 @@
 import React from 'react';
 
-const JoinGameButton = ({ onClick }) => {
+const GeneralButton = ({ onClick, content }) => {
   return (
     <button className="btn btn-primary" onClick={onClick}>
-      Join Game
+      {content}
     </button>
   );
 };
 
-export default JoinGameButton;
+export default GeneralButton;

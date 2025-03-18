@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import JoinGameButton from './components/JoinGameButton';
+import GeneralButton from './components/GeneralButton';
 import HostGameButton from './components/HostGameButton';
 import ChooseUsername from './components/EnterUsername';
 import GameIdInput from './components/GameIdInput';
@@ -22,9 +22,29 @@ const GameMenu = () => {
     setIsJoiningGame(false);
   };
 
+  const handleGoBack = () => {
+    setIsJoiningGame(false);
+    setIsHostingGame(false);
+  };
+
   const handleGameIdSubmit = async ({ gameId, username }) => {
-    if (username !== '' || gameId !== '') {
-      navigate(`/lobby/${gameId}`, { state: { username } });
+    if (username === '' || gameId === '') {
+      return;
+    }
+  
+    try {
+      // Add lobby check before navigation
+      const response = await fetch(`http://localhost:5000/game/check-lobby/${gameId}`);
+      const data = await response.json();
+      
+      if (data.exists) {
+        navigate(`/lobby/${gameId}`, { state: { username, isHost: false } });
+      } else {
+        alert('Lobby does not exist!');
+      }
+    } catch (error) {
+      console.error('Error checking lobby:', error);
+      alert('Error checking lobby existence');
     }
   };
 
@@ -40,7 +60,7 @@ const GameMenu = () => {
 
         if (response.ok) {
           const { lobbyId } = await response.json();
-          navigate(`/lobby/${lobbyId}`, { state: { username } });
+          navigate(`/lobby/${lobbyId}`, { state: { username, isHost: true } });
         } else {
           alert('Error creating lobby');
         }
@@ -61,17 +81,19 @@ const GameMenu = () => {
         <div className="col-12 col-md-6">
           <div className="mb-3">
             {(!isJoiningGame && !isHostingGame) ? (
-              <div>
-                <JoinGameButton onClick={handleJoinGame} />
-                <HostGameButton onClick={handleHostGame} />
+              <div className="d-grid gap-3">
+                <GeneralButton onClick={handleJoinGame} content="Join Game"/>
+                <GeneralButton onClick={handleHostGame} content="Host Game"/>
               </div>
             ) : (isHostingGame) ? (
-              <div>
+              <div className="d-grid gap-3">
                 <ChooseUsername onUsernameSubmit={handleHostSubmit} />
+                <GeneralButton onClick={handleGoBack} content="Go Back"/>
               </div>
             ) : (
-              <div>
+              <div className="d-grid gap-3">
                 <GameIdInput onSubmit={handleGameIdSubmit} />
+                <GeneralButton onClick={handleGoBack} content="Go Back"/>
               </div>
             )}
           </div>
