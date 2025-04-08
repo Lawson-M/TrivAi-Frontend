@@ -1,15 +1,25 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import './App.css';
+import Header from './components/GameHeader.jsx';
 import GameMenu from './GameMenu.jsx';
-import GameLobby from './GameLobby.jsx'; // New Lobby page
+import GameLobby from './GameLobby.jsx';
+import AuthPage from './AuthPage.jsx';
 
 const App = () => {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<GameMenu />} /> {/* Main Menu */}
-        <Route path="/lobby/:gameId" element={<GameLobby />} /> {/* Lobby page */}
-      </Routes>
+      <div className="app-wrapper">
+        <Header />
+        <div className="content-wrapper">
+          <Routes>
+            <Route path="/" element={<GameMenu />} />
+            <Route path="/lobby/:gameId" element={<GameLobby />} />
+            <Route path="/auth" element={<AuthPage />} />
+          </Routes>
+        </div>
+      </div>
     </Router>
   );
 };

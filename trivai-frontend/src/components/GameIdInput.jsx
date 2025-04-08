@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import 'bootstrap/dist/css/bootstrap.min.css';
 
 const GameIdInput = ({ onSubmit }) => {
   const [gameId, setGameId] = useState('');
@@ -21,17 +20,6 @@ const GameIdInput = ({ onSubmit }) => {
           placeholder="Game ID"
           value={gameId}
           onChange={(e) => setGameId(e.target.value)}
-        />
-      </div>
-      <div className="mb-3">
-        <label htmlFor="username" className="form-label">Enter Username</label>
-        <input
-          type="text"
-          id="username"
-          className="form-control"
-          placeholder="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
         />
       </div>
       <button type="submit" className="btn btn-primary">

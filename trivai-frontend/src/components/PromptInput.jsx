@@ -11,17 +11,19 @@ const PromptInput = ({ onPromptSubmit }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mt-3">
+    <form onSubmit={handleSubmit} className="mt-3 text-center">
       <input
         type="text"
-        className="form-control mb-2"
+        className="form-control mb-3"
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         placeholder="Enter your prompt here..."
       />
-      <button type="submit" className="btn btn-primary">
-        Submit
-      </button>
+      <div className="d-flex justify-content-center">
+        <button type="submit" className="btn btn-primary px-4">
+          Submit
+        </button>
+      </div>
     </form>
   );
 };
