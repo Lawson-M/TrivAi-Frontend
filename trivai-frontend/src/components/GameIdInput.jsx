@@ -22,17 +22,6 @@ const GameIdInput = ({ onSubmit }) => {
           onChange={(e) => setGameId(e.target.value)}
         />
       </div>
-      <div className="mb-3">
-        <label htmlFor="username" className="form-label">Enter Username</label>
-        <input
-          type="text"
-          id="username"
-          className="form-control"
-          placeholder="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-      </div>
       <button type="submit" className="btn btn-primary">
         Submit
       </button>

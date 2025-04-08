@@ -9,7 +9,7 @@ const GameLobby = () => {
   const { gameId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { username, isHost } = location.state;
+  const { username, isHost, isGuest } = location.state;
 
   const [players, setPlayers] = useState([]);
   const [gameStarted, setGameStarted] = useState(false);
@@ -43,7 +43,8 @@ const GameLobby = () => {
       ws.current.send(JSON.stringify({
         type: 'joinLobby',
         lobbyId: gameId,
-        username: username
+        username: username,
+        isGuest: isGuest
       }));
     };
 
@@ -100,6 +101,7 @@ const GameLobby = () => {
           setPlayerAnswer('');
           setHasAnsweredCorrectly(false);
           setCorrectPlayers([]);
+          break;
         }
 
         case 'lobbyDeleted': {
@@ -128,7 +130,7 @@ const GameLobby = () => {
       window.removeEventListener('beforeunload', handleDisconnect);
       ws.current?.close();
     };
-  }, [gameId, username]);
+  }, [gameId, username, isHost, navigate]);
 
   const handlePromptSubmit = async (prompt) => {
     try {
@@ -150,14 +152,54 @@ const GameLobby = () => {
 
   const handleAnswerSubmit = (e) => {
     e.preventDefault();
-    if (currentQuestion && playerAnswer.trim().toLowerCase() === currentQuestion.answer.toLowerCase()) {
+    let correct = false;
+
+    const normalPlayerAnswer = normalize(playerAnswer);
+    const normalCurrentQuestion = normalize(currentQuestion.answer);
+
+    if(normalPlayerAnswer === normalCurrentQuestion) {
+      correct = true;
+    } else if (fuzziness(normalCurrentQuestion, normalPlayerAnswer) < (normalCurrentQuestion.length/3)) {
+      correct = true;
+    }
+
+    if (correct) {
       setFeedback('Correct!');
       setHasAnsweredCorrectly(true);
-      ws.current?.send(JSON.stringify({ type: 'updateScore', username, score: 1, lobbyId: gameId }));
+      ws.current?.send(JSON.stringify({ type: 'updateScore', username: username, score: 1, lobbyId: gameId }));
     } else {
       setFeedback('Incorrect. Try again!');
     }
   };
+
+  function normalize(answer) {
+    return answer
+      .toLowerCase()
+      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function fuzziness(correctAnswer, userAnswer) {
+
+    const n = correctAnswer.length;
+    const m = userAnswer.length;
+    const matrix = Array.from({ length: n + 1 }, () => Array(m + 1).fill(0));
+
+    for (let i = 0; i <= n; i++) matrix[i][0] = i;
+    for (let j = 0; j <= m; j++) matrix[0][j] = j;
+
+    for (let i = 1; i <= n; i++) {
+      for (let j = 1; j <= m; j++) {
+        if (correctAnswer[i - 1] === userAnswer[j - 1]) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + 1);
+        }
+      }
+    }
+    return matrix[n][m];
+  }
 
   return (
     <div className="game-container">

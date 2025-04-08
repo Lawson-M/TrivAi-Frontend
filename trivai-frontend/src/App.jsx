@@ -5,6 +5,7 @@ import './App.css';
 import Header from './components/GameHeader.jsx';
 import GameMenu from './GameMenu.jsx';
 import GameLobby from './GameLobby.jsx';
+import AuthPage from './AuthPage.jsx';
 
 const App = () => {
   return (
@@ -15,6 +16,7 @@ const App = () => {
           <Routes>
             <Route path="/" element={<GameMenu />} />
             <Route path="/lobby/:gameId" element={<GameLobby />} />
+            <Route path="/auth" element={<AuthPage />} />
           </Routes>
         </div>
       </div>
