@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Scoreboard from './components/Scoreboard';
 import PromptInput from './components/PromptInput';
 import QuestionDisplay from './components/QuestionDisplay';
+import HostOptions from './components/HostOptions';
 
 const GameLobby = () => {
   const { gameId } = useParams();
@@ -13,7 +14,7 @@ const GameLobby = () => {
 
   const [players, setPlayers] = useState([]);
   const [gameStarted, setGameStarted] = useState(false);
-  const [currentQuestion, setCurrentQuestion] = useState(null);
+  const [currentQuestion, setCurrentQuestion] = useState([]);
   const [timeLeft, setTimeLeft] = useState(20);
   const [feedback, setFeedback] = useState('');
   const [answerDisplay, setAnswerDisplay] = useState(false);
@@ -21,6 +22,13 @@ const GameLobby = () => {
   const [hasAnsweredCorrectly, setHasAnsweredCorrectly] = useState(false);
   const [correctPlayers, setCorrectPlayers] = useState([]);
   const ws = useRef(null);
+
+  // Host Options
+  const [questionCount, setQuestionCount] = useState(10);
+  const [chosenTimer, setChosenTimer] = useState(10);
+  const [aiModel, setAiModel] = useState("gpt-4o");
+  const [preventReuse, setPreventReuse] = useState(true);
+  const [allowImages, setAllowImages] = useState(true);
 
   const handleDisconnect = () => {
     if (ws.current?.readyState === WebSocket.OPEN) {
@@ -34,7 +42,7 @@ const GameLobby = () => {
   };  
 
   useEffect(() => {
-    ws.current = new WebSocket('ws://localhost:5000');
+    ws.current = new WebSocket('ws://localhost:5000/ws');
 
     window.addEventListener('beforeunload', handleDisconnect);
 
@@ -53,6 +61,13 @@ const GameLobby = () => {
       console.log('WebSocket message received:', data);
     
       switch (data.type) {
+
+        case 'heartbeat': {
+          ws.current?.send(JSON.stringify({ type: 'heartbeat'}));
+          console.log('Server is awake!');
+          break;
+        }
+
         case 'gameStarted': {
           setGameStarted(true);
           setAnswerDisplay(false);
@@ -134,12 +149,20 @@ const GameLobby = () => {
 
   const handlePromptSubmit = async (prompt) => {
     try {
-      const response = await fetch('http://localhost:5000/game/openai', {
+      const response = await fetch('/api/game/openai', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt, lobbyId: gameId }),
+        body: JSON.stringify({ 
+          prompt, 
+          lobbyId: gameId,
+          questionCount: questionCount,
+          timerLimit: chosenTimer,
+          aiModel: aiModel,
+          preventReuse: preventReuse,
+          allowImages: allowImages
+        })
       });
 
       if (!response.ok) {
@@ -155,11 +178,34 @@ const GameLobby = () => {
     let correct = false;
 
     const normalPlayerAnswer = normalize(playerAnswer);
-    const normalCurrentQuestion = normalize(currentQuestion.answer);
+    const playerAnswerLength = normalPlayerAnswer.length;
 
-    if(normalPlayerAnswer === normalCurrentQuestion) {
+    const answerTotal = currentQuestion.answer.length;
+    let normalCurrentQuestions = [];
+
+    let closestAnswer = 1;
+    let currentDifference = 1000;
+    let answerDifference = 1000;
+
+    for (let i = 0; i < answerTotal; i++) {
+      normalCurrentQuestions.push(normalize(currentQuestion.answer[i]));
+
+      let currentDifference = Math.abs(playerAnswerLength-currentQuestion.answer[i].length)
+      if (currentDifference<answerDifference) {
+        answerDifference = currentDifference;
+        closestAnswer = i;
+        currentQuestion.answer[i].length
+      }
+    }
+
+
+    if(normalPlayerAnswer === normalCurrentQuestions[closestAnswer]) {
       correct = true;
-    } else if (fuzziness(normalCurrentQuestion, normalPlayerAnswer) < (normalCurrentQuestion.length/3)) {
+    } else if (fuzziness(normalCurrentQuestions[closestAnswer], normalPlayerAnswer) < (normalCurrentQuestions[closestAnswer].length/3)) {
+      correct = true;
+    } else if( closestAnswer > 1 && fuzziness(normalCurrentQuestions[closestAnswer-1], normalPlayerAnswer) < (normalCurrentQuestions[closestAnswer].length /3)) {
+      correct = true;
+    } else if( closestAnswer < answerTotal && fuzziness(normalCurrentQuestions[closestAnswer+1], normalPlayerAnswer) < (normalCurrentQuestions[closestAnswer].length/3)) {
       correct = true;
     }
 
@@ -213,7 +259,21 @@ const GameLobby = () => {
         </div>
         <div className="game-content">
           {!gameStarted && isHost ?(
-            <PromptInput onPromptSubmit={handlePromptSubmit} />
+            <>
+              <PromptInput onPromptSubmit={handlePromptSubmit} />
+              <HostOptions 
+                questionCount={questionCount}
+                setQuestionCount={setQuestionCount}
+                chosenTimer={chosenTimer}
+                setChosenTimer={setChosenTimer}
+                aiModel={aiModel}
+                setAiModel={setAiModel}
+                preventReuse={preventReuse}
+                setPreventReuse={setPreventReuse}
+                allowImages={allowImages}
+                setAllowImages={setAllowImages}
+              />
+            </>
           ) : !gameStarted ?(
             <div className="text-center">
               <h4>Waiting for host to start game...</h4>
@@ -221,7 +281,7 @@ const GameLobby = () => {
           ) : answerDisplay ?(
             <div className="question-container text-center">
               <h4>{currentQuestion?.question}</h4>
-              <p>Answer: <b>{currentQuestion?.answer}</b></p>
+              <p>Answer: <b>{currentQuestion?.answer[0]}</b></p>
             </div>
           ) : (
             <QuestionDisplay
