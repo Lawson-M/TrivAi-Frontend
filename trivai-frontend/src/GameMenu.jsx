@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import GeneralButton from './components/GeneralButton';
-import HostGameButton from './components/HostGameButton';
-import ChooseUsername from './components/EnterUsername';
 import GameIdInput from './components/GameIdInput';
 import { useAuth } from './AuthContext';
 import './App.css';
@@ -21,7 +19,7 @@ const GameMenu = () => {
   const handleHostGame = async () => {
     if (user) {
       try {
-        const response = await fetch('http://localhost:5000/game/create-lobby', {
+        const response = await fetch('/api/game/create-lobby', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -52,7 +50,7 @@ const GameMenu = () => {
   
     try {
       // Add lobby check before navigation
-      const response = await fetch(`http://localhost:5000/game/check-lobby/${gameId}`);
+      const response = await fetch(`/api/game/check-lobby/${gameId}`);
       const data = await response.json();
       var isGuest = false;
 
